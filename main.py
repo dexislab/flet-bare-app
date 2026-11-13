@@ -5,7 +5,7 @@ import flet_shadcn_ui as shad
 import flet as ft
 
 PAYMENTS = [
-    ("Success", "ken99@example.com", 316.00),
+    ("Success", "ken99@example.com", 317.00),
     ("Success", "abe45@example.com", 242.00),
     ("Pending", "monica@example.com", 837.00),
     ("Failed", "carla@example.com", 721.00),
