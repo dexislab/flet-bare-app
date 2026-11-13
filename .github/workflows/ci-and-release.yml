@@ -1,0 +1,116 @@
+name: CI & Release (Linux + Android)
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish a GitHub Release (requires running on a tag or providing a tag name)'
+        required: false
+        default: 'false'
+        type: boolean
+      release_tag:
+        description: 'Tag name if manually publishing (e.g., v1.0.0)'
+        required: false
+        default: ''
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  # 1. Runs on EVERY push, PR, tag, and manual dispatch
+  test:
+    name: Run Tests & Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: |
+          if [ -d "tests" ] || ls test_*.py *_test.py 1> /dev/null 2>&1; then
+            uv run pytest
+          else
+            echo "No test files found yet — skipping pytest."
+          fi
+
+  # 2. Parallel Linux & Android builds (triggered on version tags or manual dispatch)
+  build-linux:
+    name: Build Linux (x64)
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - uses: actions/cache@v4
+        with:
+          path: ~/flutter
+          key: flutter-sdk-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+      - run: uv run flet build linux --yes -o ./dist
+      - run: tar -czvf shadcn-showcase-linux-x64.tar.gz -C dist .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shadcn-showcase-linux-x64
+          path: shadcn-showcase-linux-x64.tar.gz
+
+  build-android:
+    name: Build Android (APK)
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - uses: actions/cache@v4
+        with:
+          path: ~/flutter
+          key: flutter-sdk-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+      - run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+      - run: uv run flet build apk --yes -o ./dist-android
+      - run: cp dist-android/*.apk shadcn-showcase-android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: shadcn-showcase-android-apk
+          path: shadcn-showcase-android.apk
+
+  # 3. Publishes GitHub Release on tags or manual dispatch with release options enabled
+  publish-release:
+    name: Publish GitHub Release
+    needs: [build-linux, build-android]
+    if: >
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && inputs.publish_release == true && inputs.release_tag != '')
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - id: tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: Release ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(steps.tag.outputs.name, '-') }}
+          files: release-assets/*
