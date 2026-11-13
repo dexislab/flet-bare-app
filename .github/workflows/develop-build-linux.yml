@@ -1,10 +1,10 @@
-name: Build Flet App for Linux
+name: Build Flet App for Linux / Develop
 
 on:
   push:
-    branches: [ main ]
+    branches: [ develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ develop ]
   workflow_dispatch: # Allows manual runs from the GitHub Actions tab
 
 jobs:
