@@ -28,8 +28,8 @@ jobs:
     name: Run Tests & Lint
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
       - run: uv sync --frozen
@@ -47,19 +47,19 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/flutter
           key: flutter-sdk-${{ runner.os }}-${{ hashFiles('uv.lock') }}
       - run: uv run flet build linux --yes -o ./dist
       - run: tar -czvf shadcn-showcase-linux-x64.tar.gz -C dist .
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: shadcn-showcase-linux-x64
           path: shadcn-showcase-linux-x64.tar.gz
@@ -70,19 +70,19 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/flutter
           key: flutter-sdk-${{ runner.os }}-${{ hashFiles('uv.lock') }}
       - run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
       - run: uv run flet build apk --yes -o ./dist-android
       - run: cp dist-android/*.apk shadcn-showcase-android.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: shadcn-showcase-android-apk
           path: shadcn-showcase-android.apk
@@ -96,7 +96,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && inputs.publish_release == true && inputs.release_tag != '')
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v7
         with:
           path: release-assets
           merge-multiple: true
@@ -107,7 +107,7 @@ jobs:
           else
             echo "name=${{ inputs.release_tag }}" >> "$GITHUB_OUTPUT"
           fi
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.name }}
           name: Release ${{ steps.tag.outputs.name }}
