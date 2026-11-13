@@ -7,13 +7,18 @@ on:
     branches: [ develop ]
   workflow_dispatch: # Allows manual runs from the GitHub Actions tab
 
+# Customizable Values
+env:
+  APP_NAME: shadcn-showcase
+  ARTIFACT_RETENTION_DAYS: 7
+
 jobs:
   build-linux:
     runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Linux desktop build dependencies
         run: |
@@ -28,7 +33,7 @@ jobs:
             libstdc++-12-dev
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
@@ -36,7 +41,7 @@ jobs:
         run: uv sync --frozen
 
       - name: Cache Flutter SDK
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/flutter
           key: flutter-sdk-${{ runner.os }}-${{ hashFiles('uv.lock') }}
@@ -45,11 +50,11 @@ jobs:
         run: uv run flet build linux --yes -o ./dist
 
       - name: Package build output as tar.gz
-        run: tar -czvf shadcn-showcase-linux-x64.tar.gz -C dist .
+        run: tar -czvf ${{ env.APP_NAME }}-linux-x64.tar.gz -C dist .
 
       - name: Upload Linux build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: shadcn-showcase-linux-x64
-          path: shadcn-showcase-linux-x64.tar.gz
-          retention-days: 14
+          name: ${{ env.APP_NAME }}-linux-x64
+          path: ${{ env.APP_NAME }}-linux-x64.tar.gz
+          retention-days: ${{ env.ARTIFACT_RETENTION_DAYS }}
