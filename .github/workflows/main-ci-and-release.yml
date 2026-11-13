@@ -34,10 +34,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
+      - uses: ./.github/actions/setup-flet
         with:
-          enable-cache: true
-      - run: uv sync --frozen
+          cache-flutter: 'false' # Tests don't need the Flutter SDK
       - run: |
           if [ -d "tests" ] || ls test_*.py *_test.py 1> /dev/null 2>&1; then
             uv run pytest
@@ -57,14 +56,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - run: sudo apt-get update && sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
-      - uses: astral-sh/setup-uv@v10.3.3
-        with:
-          enable-cache: true
-      - run: uv sync --frozen
-      - uses: actions/cache@v5
-        with:
-          path: ~/flutter
-          key: flutter-sdk-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+      - uses: ./.github/actions/setup-flet
       - run: uv run flet build linux --yes -o ./dist
       - if: github.event_name != 'pull_request'
         run: tar -czvf ${{ env.APP_NAME }}-linux-x64.tar.gz -C dist .
@@ -85,14 +77,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.3.3
-        with:
-          enable-cache: true
-      - run: uv sync --frozen
-      - uses: actions/cache@v5
-        with:
-          path: ~/flutter
-          key: flutter-sdk-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+      - uses: ./.github/actions/setup-flet
       - run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
       - run: uv run flet build apk --yes -o ./dist-android
       - if: github.event_name != 'pull_request'
